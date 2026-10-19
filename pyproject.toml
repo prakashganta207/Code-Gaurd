@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codeguard"
+version = "0.0.1"
+description = "Detect and automatically repair security vulnerabilities in LLM-generated Python code."
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+authors = [{ name = "Prakash Ganta" }]
+# Runtime dependencies live in requirements*.txt so the heavy ML stack stays optional.
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "eval"]
+extend-exclude = ["data", "web"]
+
+[tool.ruff.lint]
+# E/F: pycodestyle + pyflakes, I: import order, B: bugbear, UP: modern syntax, S: bandit-style checks
+select = ["E", "F", "I", "B", "UP", "S"]
+ignore = ["E501"]  # black owns line length
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]  # assert is fine in tests
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "gpu: needs a CUDA GPU (skipped in CI)",
+    "ollama: needs a running Ollama server (skipped in CI)",
+]

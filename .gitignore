@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+build/
+dist/
+
+# Data, models, experiment tracking: large and/or reproducible
+data/*
+!data/.gitkeep
+models/
+mlruns/
+mlartifacts/
+outputs/
+codeql-db*/
+*.sarif
+
+# Frontend
+web/node_modules/
+web/dist/
+
+# Env / editor / OS
+.env
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
