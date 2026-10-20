@@ -6,14 +6,19 @@ Exits 0 always; it is a report, not a gate.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess  # noqa: S404 - fixed, trusted commands only
 import sys
+import sysconfig
+
+# Also search this interpreter's Scripts/bin dir, so venv tools are found without activation.
+_SEARCH_PATH = os.pathsep.join([sysconfig.get_path("scripts"), os.environ.get("PATH", "")])
 
 
 def _run(cmd: list[str]) -> str:
     """Run a command and return its first output line, or an error marker."""
-    exe = shutil.which(cmd[0])
+    exe = shutil.which(cmd[0], path=_SEARCH_PATH)
     if exe is None:
         return "NOT FOUND"
     try:

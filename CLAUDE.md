@@ -43,11 +43,12 @@ just deliver**: plain-English explanations go in `docs/learning-notes.md`.
 - Lint: ruff + black, line length 100. Pytest markers `gpu`, `ollama` are skipped in CI.
 - `data/`, `models/`, `mlruns/` are gitignored. Never commit datasets or weights.
 - Seeds: use 42 unless an experiment says otherwise.
-- Env check: `python scripts/check_env.py`.
+- Env check: `.venv\Scripts\python scripts/check_env.py` (finds venv tools without activation).
+- Python 3.11 was installed via `py install 3.11` (Python Install Manager); default `py` is 3.14.
 
 ## Progress
-- [~] Phase 0, Setup: skeleton, CLAUDE.md, pyproject, requirements, pre-commit, CI committed.
-  **Pending:** Python 3.11 install → create `.venv`, install deps, run pre-commit + pytest.
+- [x] Phase 0, Setup: skeleton, pyproject, requirements, pre-commit, CI. Python 3.11.9 venv at
+  `.venv`; pre-commit hooks installed and passing; pytest passing.
 - [ ] Phase 1, Baseline
 - [ ] Phase 2, Static repair loop (MVP)
 - [ ] Phase 3, Dataset
@@ -58,5 +59,8 @@ just deliver**: plain-English explanations go in `docs/learning-notes.md`.
 - [ ] Phase 8, Polish
 
 ## Open issues
-- Semgrep native Windows support is beta: verify in Phase 1; fallback = run it via Docker/WSL.
+- Semgrep 1.181.0 works natively on Windows (verified with a local rule). BUT `p/python` (151
+  rules) gave 0 findings on `os.system(input())`, so registry rules seem framework-taint-focused.
+  Phase 1 must pick rulesets deliberately and likely add custom rules for our 5 classes.
 - Docker, CodeQL CLI not installed yet (user installs manually).
+- Global Python 3.14 has an unrelated CPU-only torch; irrelevant to `.venv`.
