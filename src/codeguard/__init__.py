@@ -12,3 +12,6 @@ CLASSES: tuple[str, ...] = (
     "code_execution",
     "safe",
 )
+
+#: The classes that mean "vulnerable" (everything except ``safe``).
+VULN_CLASSES: tuple[str, ...] = CLASSES[:-1]

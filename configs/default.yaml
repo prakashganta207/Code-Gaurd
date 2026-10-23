@@ -1,0 +1,21 @@
+# Code Guard pipeline settings.
+# Override per machine with .env (see .env.example) or real environment variables.
+# Precedence (lowest -> highest): this file < .env < environment variables.
+# Relative paths are resolved against the project root (the folder containing configs/).
+
+seed: 42
+
+ollama:
+  host: http://localhost:11434
+  model: qwen2.5-coder:7b        # provisional: final choice made at the start of Phase 1
+  temperature: 0.0               # 0 = deterministic-ish output, for reproducible runs
+  timeout_s: 180
+  max_retries: 3
+
+repair:
+  max_rounds: 3
+
+paths:
+  data_dir: data
+  runs_dir: runs
+  class_map: configs/class_map.yaml

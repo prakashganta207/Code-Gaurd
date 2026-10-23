@@ -1,66 +1,78 @@
 # CLAUDE.md: Code Guard project memory
 
-Portfolio project by a 3rd-year CSE student (DevOps/fullstack background, new to ML). **Teach, don't
-just deliver**: plain-English explanations go in `docs/learning-notes.md`.
+Solo portfolio project by a 3rd-year CSE student (DevOps/fullstack background, new to ML).
+**Teach, don't just deliver**: plain-English explanations go in `docs/learning-notes.md`.
+Current scope: **Phases 0–3 only**. Do not start Phase 4 (training) or later.
 
 ## Working agreement
-- One phase at a time. Before coding a phase: a 5–10 line plan + the key concept. After: run it, show
-  results, update this file + learning-notes, commit, then **stop and wait for go-ahead**.
-- If a fixed decision turns out wrong (dataset moved, tool misbehaves, VRAM doesn't fit): stop and
-  present options. Never silently work around it.
-- **Never fabricate** results, dataset sizes or metrics. Every number comes from running code.
+- Before each phase: 5–10 line plan + the key concept, then **wait for OK**.
+- During: tests alongside code; explain new concepts in learning-notes.
+- End of phase: run everything, show results + acceptance checklist, update Progress below,
+  merge to `main`, tag, push, then **STOP and wait**.
+- Branch per phase: `phase-0/setup`, `phase-1/baseline`, `phase-2/mvp`, `phase-3/dataset`.
+  Commit prefixes: `feat:`, `fix:`, `data:`, `test:`, `docs:`, `chore:`.
+- If something in the spec is wrong (dataset moved, tool misbehaves, doesn't fit 8 GB): stop and
+  give options. Never work around it silently.
+- **Never fabricate** numbers, dataset sizes or results. Every number comes from code that ran.
+- Save LLM generations to `runs/` and reuse them; never regenerate unless the user asks.
 - Readable over clever. Type hints + docstrings on public functions.
-- Tests required for: static-finding normalizer, fusion logic, repair loop.
 
 ## Fixed decisions (change only with user approval)
-- Python code only. Classes (canonical order, see `codeguard.CLASSES`): `sql_injection`, `xss`,
-  `command_injection`, `path_traversal`, `code_execution`, `safe`.
-- Generator: Qwen2.5-Coder 7B Instruct via Ollama, 4-bit. *Before Phase 1: check for a newer
-  comparable coder model in the 7B class and let the user choose.*
-- Detector: `microsoft/codebert-base`, sequence classification, max_len 512, fp16, small batch +
-  grad accumulation. Training data: VUDENC (Wartschinski et al., arXiv 2201.08441), function-level.
-- Split VUDENC **by repository**. Handle imbalance. Report per-class P/R/F1 + macro-F1. Clean noisy
-  labels and log drops. Fixed seeds. All experiments in MLflow.
-- Benchmarks: SecurityEval (121 Python prompts) + CyberSecEval instruct, Python subset (PurpleLlama).
-  Official sources only.
-- **Judge = CodeQL only.** Bandit/Semgrep guide repairs and must never be the judge.
-- Repair: prompting loop, max 3 rounds. LoRA repair model = stretch goal.
-- A "fix" that breaks parsing / tests / deletes functionality = failure.
-- Stack: Python 3.11, PyTorch, HF transformers/datasets, MLflow, FastAPI, React (Vite), Docker
-  Compose, GitHub Actions, pytest.
+- Python code only. Classes (canonical order in `codeguard.CLASSES`): `sql_injection`, `xss`,
+  `command_injection`, `path_traversal`, `code_execution`, `safe`. Findings may also be `other`
+  (unmapped rule; logged, never dropped). A Finding is never `safe`.
+- Generator: Qwen2.5-Coder 7B Instruct via Ollama, 4-bit, temperature 0. *Start of Phase 1: check
+  for a newer comparable coder model in the 7B class and let the user choose.*
+- Static detectors: Bandit + Semgrep. **Judge = CodeQL only**; Bandit/Semgrep never judge.
+- Benchmark (Phases 1–2): SecurityEval, 121 Python prompts, official source only.
+- Training data (Phase 3): VUDENC, official source from arXiv 2201.08441. Function-level, split
+  80/10/10 **by project**, cleaning with logged drop reasons, no silent truncation at 512 tokens.
+- Repair loop: max `MAX_REPAIR_ROUNDS` (default 3); unparseable LLM output = failed round.
+- Stack: Python 3.11, pytest, ruff, black, pre-commit, GitHub Actions; MLflow later.
 
-## Machine facts (checked 2026-10-20)
-- Windows 11 Home. Repo path `E:\Code Gaurd` (has a space; quote paths).
-- RTX 4060 Laptop, 8 GB VRAM, driver 610.88 (CUDA 13.x capable). No CUDA toolkit needed.
-- **Ollama and training must never run at the same time** (8 GB VRAM). `ollama stop <model>` first.
-- Ollama 0.40.5 installed; only `qwen2.5:latest` (general, NOT coder) pulled.
-- Node 25.8 / npm 11.11, git 2.56.
+## Module rules (enforced by tests/unit/test_architecture.py where possible)
+1. Only `pipeline.py` knows the order of steps.
+2. Detectors never import each other; fusion is the only place they meet.
+3. `eval/` may import `codeguard`; `codeguard` must never import `eval/`.
+4. The CLI holds no logic: parse input, call the pipeline, print output.
+5. No hard-coded paths or model names: everything from `configs/` and `.env` via `config.py`.
+
+## Structure
+- `configs/default.yaml` pipeline settings; `configs/class_map.yaml` rule ID → class (Phase 2).
+- `src/codeguard/`: `schemas.py` (Finding, Detection, RepairAttempt, Report: frozen pydantic,
+  extra=forbid), `config.py` (`load_settings()`), `cli.py`, `detectors/base.py` (Detector
+  protocol), plus packages `generator/`, `detectors/{static,ml}/`, `fusion/`, `repair/`, `report/`.
+- `eval/` (`benchmarks/`, `judge/`, metrics, run_eval). Run as `python -m eval.run_eval`.
+- `tests/{unit,integration,fixtures}`. `data/{raw,interim,processed}` and `runs/` are gitignored.
+- `api/`, `web/`: README placeholders only.
 
 ## Conventions
-- src layout: package at `src/codeguard`, install with `pip install -e .`.
-- Deps: `requirements.txt` (core), `requirements-ml.txt` (ML; torch installed separately from the
-  PyTorch CUDA index), `requirements-dev.txt` (lint/test, pins match pre-commit).
-- Lint: ruff + black, line length 100. Pytest markers `gpu`, `ollama` are skipped in CI.
-- `data/`, `models/`, `mlruns/` are gitignored. Never commit datasets or weights.
-- Seeds: use 42 unless an experiment says otherwise.
-- Env check: `.venv\Scripts\python scripts/check_env.py` (finds venv tools without activation).
-- Python 3.11 was installed via `py install 3.11` (Python Install Manager); default `py` is 3.14.
+- Install: `make setup` (venv + `pip install -e ".[dev]"` + pre-commit). ML extras: `.[ml]`, with
+  the CUDA PyTorch wheel installed separately first.
+- `make lint` (ruff + black, line length 100), `make test` (pytest `-m "not slow"`).
+  Mark tests needing GPU/Ollama/CodeQL/network with `@pytest.mark.slow`; CI excludes them.
+- Config precedence: YAML < `.env` < environment. Env vars: `OLLAMA_HOST`, `MODEL_NAME`,
+  `MAX_REPAIR_ROUNDS`, `CODEGUARD_CONFIG` (alternate YAML). Relative paths resolve to project root.
+- Seed 42. `make check-env` reports the toolchain and whether the Ollama server is up.
+- `codeguard config` prints effective settings.
+
+## Machine facts (checked 2026-10-23)
+- Windows 11 Home. Repo path `E:\Code Gaurd` (has a space; quote paths). Remote:
+  github.com/prakashganta207/Code-Gaurd. `gh` CLI is not authenticated (can't read CI status).
+- RTX 4060 Laptop, 8 GB VRAM, driver 610.88. **Ollama and training never run at the same time.**
+- Python 3.11.9 via `py install 3.11` (default `py` is 3.14). GNU Make 4.4.1 via winget
+  (`ezwinports.make`); recipes run under cmd.exe on Windows, so the Makefile uses backslash paths.
+- Ollama 0.40.5; only `qwen2.5:latest` (general, NOT coder) pulled; server not auto-running.
+- Bandit 1.9.4, Semgrep 1.181.0 work natively. **Missing: CodeQL CLI (blocks Phase 1), Docker.**
 
 ## Progress
-- [x] Phase 0, Setup: skeleton, pyproject, requirements, pre-commit, CI. Python 3.11.9 venv at
-  `.venv`; pre-commit hooks installed and passing; pytest passing.
-- [ ] Phase 1, Baseline
-- [ ] Phase 2, Static repair loop (MVP)
-- [ ] Phase 3, Dataset
-- [ ] Phase 4, Train classifier
-- [ ] Phase 5, Fusion
-- [ ] Phase 6, Full evaluation
-- [ ] Phase 7, Product
-- [ ] Phase 8, Polish
+- [x] Phase 0, Setup: restructured to the Phases 0–3 spec; schemas, config, CLI stubs, Makefile,
+  CI via make; 37 unit tests pass. Tag `v0.0-setup`.
+- [ ] Phase 1, Baseline (`v0.1-baseline`)
+- [ ] Phase 2, Static repair loop / MVP (`v0.2-mvp`)
+- [ ] Phase 3, Dataset (`v0.3-dataset`)
 
 ## Open issues
-- Semgrep 1.181.0 works natively on Windows (verified with a local rule). BUT `p/python` (151
-  rules) gave 0 findings on `os.system(input())`, so registry rules seem framework-taint-focused.
-  Phase 1 must pick rulesets deliberately and likely add custom rules for our 5 classes.
-- Docker, CodeQL CLI not installed yet (user installs manually).
+- Semgrep `p/python` (151 rules) gave 0 findings on `os.system(input())`: registry rules look
+  framework-taint-focused. Phase 1 must choose rulesets deliberately (likely + custom rules).
 - Global Python 3.14 has an unrelated CPU-only torch; irrelevant to `.venv`.

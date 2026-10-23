@@ -10,13 +10,15 @@ venv/
 build/
 dist/
 
-# Data, models, experiment tracking: large and/or reproducible
-data/*
-!data/.gitkeep
+# Data and run outputs: large and/or reproducible. Keep only the folder skeleton.
+data/**
+!data/**/
+!data/**/.gitkeep
+runs/**
+!runs/.gitkeep
 models/
 mlruns/
 mlartifacts/
-outputs/
 codeql-db*/
 *.sarif
 
