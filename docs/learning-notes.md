@@ -44,3 +44,40 @@ use for training:
 - **CI (GitHub Actions)** repeats the same checks plus `pytest` on a clean Linux machine for every
   push. This catches "works on my machine" problems. Tests that need a GPU or Ollama are marked and
   skipped there, because CI runners have neither.
+
+### Typed contracts between modules (`schemas.py`)
+Code Guard has several parts (detectors, fusion, repair, reporting, evaluation) that hand data to
+each other. `schemas.py` defines the *only* shapes allowed to cross those boundaries: `Finding`,
+`Detection`, `RepairAttempt` and `Report`. Think of them like an API contract between microservices,
+except inside one program.
+
+They are **pydantic** models, which means the data is checked when an object is created:
+- `confidence=1.5` or `line=0` raises an error immediately, instead of producing a weird number
+  three steps later.
+- `extra="forbid"` rejects unknown fields, so a typo like `vuln_clas=` fails loudly.
+- `frozen=True` makes objects immutable, so the repair loop can't accidentally change a detection
+  that the report later relies on.
+- Validators enforce rules *between* fields, such as "a vulnerable `Detection` must have at least one
+  finding and a `top_class` that isn't `safe`."
+
+Why this matters for ML work: most bugs in data pipelines are not crashes. They are silently wrong
+values, like a mislabelled sample or a confidence on the wrong scale, and those quietly corrupt
+your metrics. Validating at the boundaries is cheap insurance.
+
+### Layered configuration (`config.py`)
+Settings come from three layers, each overriding the one before:
+1. `configs/default.yaml`: committed defaults, the same for everyone.
+2. `.env`: per-machine values (not committed), e.g. a different Ollama host.
+3. Real environment variables: per-run overrides, e.g. `MODEL_NAME=... make baseline`.
+
+All three merge into one validated `Settings` object. Code never reads `os.environ` or hard-codes a
+model name or path; it asks `load_settings()`. This is the
+[12-factor](https://12factor.net/config) idea you may know from DevOps. For experiments it has an
+extra benefit: the exact settings of a run can be printed (`codeguard config`) and saved next to
+its results, so every number is traceable to its configuration.
+
+### Architecture tests
+`tests/unit/test_architecture.py` reads every source file's `import` statements (using Python's
+`ast` module, which turns code into a tree you can inspect) and fails if a module rule is broken,
+for example if `codeguard` ever imports `eval`. Rules written only in documentation get broken
+eventually; rules enforced by CI tend to stay intact.
