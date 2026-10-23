@@ -1,0 +1,5 @@
+# Bandit test IDs / Semgrep rule IDs -> Code Guard vulnerability class.
+# Filled in Phase 2 from the rules that actually fired in the Phase 1 baseline.
+# Anything not listed here is normalized to class "other" and logged, never dropped.
+bandit: {}
+semgrep: {}
