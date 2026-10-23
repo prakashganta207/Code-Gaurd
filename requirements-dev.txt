@@ -1,6 +1,0 @@
-# Dev tooling. Versions match .pre-commit-config.yaml so local, hook and CI results agree.
--r requirements.txt
-pytest>=8.3
-pre-commit>=4.0
-ruff==0.6.9
-black==24.10.0
