@@ -2,7 +2,6 @@ name: CI
 
 on:
   push:
-    branches: [main]
   pull_request:
 
 jobs:
@@ -15,19 +14,18 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: requirements*.txt
+          cache-dependency-path: pyproject.toml
 
-      - name: Install
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e . -r requirements-dev.txt
+      # Same Makefile targets as local development.
+      - name: Setup
+        run: make setup PYTHON=python
 
-      - name: Ruff
-        run: ruff check .
+      - name: Lint
+        run: make lint
 
-      - name: Black
-        run: black --check .
+      # `make test` excludes tests marked `slow` (GPU, Ollama, CodeQL, network).
+      - name: Unit tests
+        run: make test
 
-      # GPU and Ollama tests need local hardware/services, so CI skips them.
-      - name: Pytest
-        run: pytest -m "not gpu and not ollama"
+      - name: CLI smoke test
+        run: .venv/bin/codeguard --help

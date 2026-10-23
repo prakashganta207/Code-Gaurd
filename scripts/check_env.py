@@ -36,7 +36,7 @@ def _torch_report() -> str:
     try:
         import torch
     except ImportError:
-        return "NOT INSTALLED (see requirements-ml.txt)"
+        return "NOT INSTALLED (CUDA build from pytorch.org, then pip install -e .[ml])"
     if not torch.cuda.is_available():
         return f"{torch.__version__}, CUDA NOT available (CPU-only build?)"
     props = torch.cuda.get_device_properties(0)
@@ -44,6 +44,25 @@ def _torch_report() -> str:
         f"{torch.__version__}, CUDA {torch.version.cuda}, {props.name}, "
         f"{props.total_memory / 1024**3:.1f} GB, fp16 ok, bf16={torch.cuda.is_bf16_supported()}"
     )
+
+
+def _ollama_server_report() -> str:
+    """Ping the configured Ollama server and list pulled models."""
+    import json
+    import urllib.request
+
+    try:
+        from codeguard.config import load_settings
+
+        host = load_settings().ollama.host.rstrip("/")
+    except Exception as exc:  # noqa: BLE001 - report, don't crash
+        return f"cannot load settings ({exc})"
+    try:
+        with urllib.request.urlopen(f"{host}/api/tags", timeout=3) as resp:  # noqa: S310
+            models = [m["name"] for m in json.load(resp).get("models", [])]
+    except OSError:
+        return f"NOT RUNNING at {host} (start the Ollama app)"
+    return f"running at {host}; models: {', '.join(models) or 'none'}"
 
 
 def main() -> None:
@@ -55,6 +74,7 @@ def main() -> None:
         "git": _run(["git", "--version"]),
         "docker": _run(["docker", "--version"]),
         "ollama": _run(["ollama", "--version"]),
+        "ollama server": _ollama_server_report(),
         "bandit": _run(["bandit", "--version"]),
         "semgrep": _run(["semgrep", "--version"]),
         "codeql": _run(["codeql", "version"]),
